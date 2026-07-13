@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asset Performance Report</title>
+    <link rel="stylesheet" href="/global-theme.css">
+    <script src="/global-nav.js" defer></script>
+    <!-- Modern Outfits font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Load Plotly JS once system-wide -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg-color: #0b0f19;
+            --panel-bg: rgba(17, 24, 39, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.06);
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --positive-color: #10b981;
+            --negative-color: #ef4444;
+            --primary-color: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.4);
+            --glow-color: rgba(59, 130, 246, 0.15);
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(88, 28, 135, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-color);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            padding: 2rem 1.5rem;
+            padding-top: calc(var(--nav-height, 60px) + 2rem) !important;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 1.5rem;
+        }
+        
+        .logo-section h1 {
+            margin: 0;
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            background: linear-gradient(to right, #60a5fa, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .logo-section p {
+            margin: 0.25rem 0 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        
+        .date-badge {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--panel-border);
+            border-radius: 9999px;
+            padding: 0.5rem 1.25rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #93c5fd;
+        }
+        
+        /* Glassmorphism Panel styles */
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+        }
+
+        .summary-table-panel {
+            border: 1px solid var(--panel-border);
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+            padding: 2rem;
+            margin-bottom: 2.5rem;
+        }
+        
+        .positive {
+            color: var(--positive-color);
+        }
+        
+        .negative {
+            color: var(--negative-color);
+        }
+        
+        .div-amount {
+            color: #60a5fa;
+        }
+        
+        /* Chart Section Design */
+        .chart-section-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-container {
+            min-height: 400px;
+            margin-bottom: 2.5rem;
+        }
+        
+        .chart-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+            color: #93c5fd;
+        }
+        
+        /* Table Styles */
+        .table-responsive {
+            overflow-x: auto;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            text-align: left;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 0.45rem 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.9rem;
+        }
+        
+        .data-table th {
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .data-table th:first-child, .data-table td:first-child {
+            border-top-left-radius: 8px;
+            border-bottom-left-radius: 8px;
+        }
+
+        .data-table th:last-child, .data-table td:last-child {
+            border-top-right-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .data-table tbody tr:hover td {
+            background-color: rgba(59, 130, 246, 0.08);
+            color: #ffffff;
+        }
+        
+        .table-ticker {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .ticker-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        footer {
+            margin-top: 4rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--panel-border);
+            padding-top: 1.5rem;
+        }
+        .pct {
+            font-size: 0.75rem;
+            margin-left: 0.25rem;
+        }
+        .emphasized-row {
+            background-color: rgba(255, 255, 255, 0.07) !important;
+        }
+        .emphasized-row td {
+            font-weight: 700 !important;
+            font-size: 1.02rem !important;
+        }
+        .emphasized-row td:first-child {
+            color: #fbbf24 !important;
+        }
+
+        /* Custom scrollbar styling for a consistent dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-section">
+                <h1>Portfolio Backtest & Returns Analyst</h1>
+                <p>Comparison analysis incorporating Withholding Tax (WHT) and Return of Capital (ROC)</p>
+            </div>
+            <div class="date-badge">
+                Timeframe: {% if resolved_start_date %}{{ resolved_start_date }}{% else %}{{ start_date }}{% endif %} to {{ end_date }}
+            </div>
+        </header>
+
+        {% if resolved_start_date and resolved_start_date > start_date %}
+        <div class="panel alert-panel" style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 12px; padding: 1rem 1.5rem; margin-bottom: 2rem; display: flex; align-items: center; gap: 0.75rem; color: #f59e0b;">
+            <svg style="width: 1.25rem; height: 1.25rem; flex-shrink: 0;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+            </svg>
+            <div>
+                <strong>Timeline Aligned:</strong> Comparison timeframe automatically adjusted forward to <strong>{{ resolved_start_date }}</strong> (originally requested: {{ start_date }}) due to the later inception/availability date of <strong>{{ shifted_by_ticker }}</strong>.
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Performance Summary Dashboard (Side-by-Side) -->
+        <div class="panel summary-table-panel">
+            <!-- Returns Summary Bar Chart -->
+            <div style="margin-bottom: 2rem; border-bottom: 1px dashed rgba(255, 255, 255, 0.1); padding-bottom: 1.5rem;">
+                <h2 class="chart-title" style="margin-bottom: 0.25rem;">Reinvestment vs. Cash Payout Comparison</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1rem 0;">Timeframe: {% if resolved_start_date %}{{ resolved_start_date }}{% else %}{{ start_date }}{% endif %} to {{ end_date }}</p>
+                <div style="min-height: 250px;">
+                    {{ div_summary|safe }}
+                </div>
+            </div>
+
+            <h2 class="chart-title" style="margin-bottom: 1rem;">Investment Performance Summary Overview</h2>
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Performance Metric</th>
+                            {% for ticker, data in results.items() %}
+                                <th style="text-align: center;">
+                                    <div style="display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center;">
+                                        <span class="ticker-dot" style="background-color: {{ ticker_colors[ticker] }};"></span>
+                                        <strong>{{ ticker }}</strong>
+                                    </div>
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- General / Config -->
+                        <tr style="background: rgba(255,255,255,0.02); font-weight: 600;">
+                            <td colspan="{{ results|length + 1 }}">General Info</td>
+                        </tr>
+                        <tr>
+                            <td>Initial Investment</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;">${{ "{:,.2f}".format(data.initial_investment) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Seeded Tax Rate (WHT)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;">{{ "%.2f"|format(data.tax * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Return of Capital (ROC) Rate</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;">{{ "%.2f"|format(data.roc * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        
+                        <!-- With Re-Investment Section -->
+                        <tr style="background: rgba(59, 130, 246, 0.1); font-weight: 600; color: #93c5fd;">
+                            <td colspan="{{ results|length + 1 }}">WITH RE-INVESTMENT</td>
+                        </tr>
+                        <tr>
+                            <td>Ending Portfolio Value</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; font-weight: 700;">${{ "{:,.2f}".format(data.total_val_with) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="emphasized-row">
+                            <td>CAGR</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.cagr >= 0 %}positive{% else %}negative{% endif %}">{{ "%.2f"|format(data.cagr * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="emphasized-row">
+                            <td>Total Return (%)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.total_return >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+%.2f"|format(data.total_return * 100) if data.total_return >= 0 else "%.2f"|format(data.total_return * 100) }}%
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Return ($)</td>
+                            {% for ticker, data in results.items() %}
+                                {% set val_with = data.tr_val_with %}
+                                <td style="text-align: center;" class="{% if val_with >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+${:,.2f}".format(val_with) if val_with >= 0 else "-${:,.2f}".format(val_with|abs) }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Price Return (%)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.price_return >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+%.2f"|format(data.price_return * 100) if data.price_return >= 0 else "%.2f"|format(data.price_return * 100) }}%
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Price Return ($)</td>
+                            {% for ticker, data in results.items() %}
+                                {% set pr_val = data.pr_val_scaled %}
+                                <td style="text-align: center;" class="{% if pr_val >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+${:,.2f}".format(pr_val) if pr_val >= 0 else "-${:,.2f}".format(pr_val|abs) }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        
+                        <tr>
+                            <td>Max Drawdown</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="negative">{{ "%.2f"|format(data.max_drawdown * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Gross Dividends</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: #60a5fa;">${{ "{:,.2f}".format(data.total_gross_div) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Net Dividends</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: #60a5fa;">${{ "{:,.2f}".format(data.total_net_div) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Withholding Tax (WHT) Paid</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: var(--negative-color);">${{ "{:,.2f}".format(data.wht_paid_with) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Return of Capital (ROC) Refund Cash</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: var(--positive-color);">${{ "{:,.2f}".format(data.roc_refund_with) }}</td>
+                            {% endfor %}
+                        </tr>
+                        
+                        <!-- Without Re-Investment Section -->
+                        <tr style="background: rgba(16, 185, 129, 0.1); font-weight: 600; color: #a7f3d0;">
+                            <td colspan="{{ results|length + 1 }}">WITHOUT RE-INVESTMENT</td>
+                        </tr>
+                        <tr>
+                            <td>Ending Portfolio Value</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; font-weight: 700;">${{ "{:,.2f}".format(data.total_val_without) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="emphasized-row">
+                            <td>CAGR</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.cagr_without >= 0 %}positive{% else %}negative{% endif %}">{{ "%.2f"|format(data.cagr_without * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        <tr class="emphasized-row">
+                            <td>Total Return (%)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.tr_pct_without >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+%.2f"|format(data.tr_pct_without * 100) if data.tr_pct_without >= 0 else "%.2f"|format(data.tr_pct_without * 100) }}%
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Return ($)</td>
+                            {% for ticker, data in results.items() %}
+                                {% set val_without = data.tr_val_without %}
+                                <td style="text-align: center;" class="{% if val_without >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+${:,.2f}".format(val_without) if val_without >= 0 else "-${:,.2f}".format(val_without|abs) }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Price Return (%)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="{% if data.price_return >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+%.2f"|format(data.price_return * 100) if data.price_return >= 0 else "%.2f"|format(data.price_return * 100) }}%
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Price Return ($)</td>
+                            {% for ticker, data in results.items() %}
+                                {% set pr_val = data.pr_val_scaled %}
+                                <td style="text-align: center;" class="{% if pr_val >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+${:,.2f}".format(pr_val) if pr_val >= 0 else "-${:,.2f}".format(pr_val|abs) }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Max Drawdown (Price)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center;" class="negative">{{ "%.2f"|format(data.max_drawdown_price * 100) }}%</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Gross Dividends</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: #60a5fa;">${{ "{:,.2f}".format(data.total_gross_div) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Total Net Dividends (Cash Paid Out)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: #60a5fa;">${{ "{:,.2f}".format(data.total_net_div) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Withholding Tax (WHT) Paid</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: var(--negative-color);">${{ "{:,.2f}".format(data.wht_paid_without) }}</td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>Return of Capital (ROC) Refund Cash</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; color: var(--positive-color);">${{ "{:,.2f}".format(data.roc_refund_without) }}</td>
+                            {% endfor %}
+                        </tr>
+
+                        <!-- Strategy Comparison Section -->
+                        <tr style="background: rgba(245, 158, 11, 0.1); font-weight: 600; color: #fde047;">
+                            <td colspan="{{ results|length + 1 }}">STRATEGY COMPARISON (RE-INVESTMENT EDGE)</td>
+                        </tr>
+                        <tr>
+                            <td>Reinvestment Benefit ($)</td>
+                            {% for ticker, data in results.items() %}
+                                <td style="text-align: center; font-weight: 700;" class="{% if data.perf_diff_val >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+${:,.2f}".format(data.perf_diff_val) if data.perf_diff_val >= 0 else "-${:,.2f}".format(data.perf_diff_val|abs) }}
+                                </td>
+                            {% endfor %}
+                        </tr>
+                        <tr>
+                            <td>CAGR Boost (%)</td>
+                            {% for ticker, data in results.items() %}
+                                {% set cagr_boost = (data.cagr - data.cagr_without) %}
+                                <td style="text-align: center; font-weight: 700;" class="{% if cagr_boost >= 0 %}positive{% else %}negative{% endif %}">
+                                    {{ "+%.2f"|format(cagr_boost * 100) if cagr_boost >= 0 else "%.2f"|format(cagr_boost * 100) }}%
+                                </td>
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Stock Swapping & Share Conversion Calculator -->
+        <div class="panel" style="margin-bottom: 2.5rem;">
+            <div id="calculatorToggleHeader" style="cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                <h2 class="chart-title" style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <svg style="width: 1.25rem; height: 1.25rem; color: #fbbf24;" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
+                    </svg>
+                    Share Swapping & Conversion Calculator
+                </h2>
+                <div id="calculatorToggleArrow" style="transition: transform 0.2s ease; transform: rotate(0deg); border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 6px solid var(--text-muted);"></div>
+            </div>
+            
+            <div id="calculatorContent" style="display: none; margin-top: 1.5rem; border-top: 1px dashed rgba(255, 255, 255, 0.1); padding-top: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">Source Ticker</label>
+                        <select id="calcSourceTicker" style="background: #111827; border: 1px solid var(--panel-border); border-radius: 8px; padding: 0.6rem; color: var(--text-color); font-family: inherit; font-size: 0.95rem; outline: none;"></select>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">Current Quantity</label>
+                        <input type="number" id="calcSourceQty" value="1000" min="0" step="any" style="background: #111827; border: 1px solid var(--panel-border); border-radius: 8px; padding: 0.6rem; color: var(--text-color); font-family: inherit; font-size: 0.95rem; outline: none;">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">Target Ticker</label>
+                        <select id="calcTargetTicker" style="background: #111827; border: 1px solid var(--panel-border); border-radius: 8px; padding: 0.6rem; color: var(--text-color); font-family: inherit; font-size: 0.95rem; outline: none;"></select>
+                    </div>
+                    <div id="calcFxRateContainer" style="display: none; flex-direction: column; gap: 0.4rem;">
+                        <label id="calcFxRateLabel" style="font-size: 0.8rem; font-weight: 600; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.05em;">Exchange Rate</label>
+                        <input type="number" id="calcFxRate" value="1.0" min="0" step="any" style="background: #111827; border: 1px solid var(--panel-border); border-radius: 8px; padding: 0.6rem; color: var(--text-color); font-family: inherit; font-size: 0.95rem; outline: none;">
+                    </div>
+                </div>
+
+                <!-- Display Results -->
+                <div style="background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.03); border-radius: 12px; padding: 1.25rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Current Holding Value</div>
+                            <div id="calcSourceValDisplay" style="font-size: 1.3rem; font-weight: 700; color: #ffffff;">$0.00</div>
+                            <div id="calcSourceSubtext" style="font-size: 0.8rem; color: var(--text-muted);">0 shares @ $0.00</div>
+                            <div id="calcConvertedValDisplay" style="font-size: 0.8rem; color: #fbbf24; margin-top: 0.25rem; display: none;">Converted: $0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Target Min Unit (Lot)</div>
+                            <div id="calcTargetUnitDisplay" style="font-size: 1.3rem; font-weight: 700; color: #93c5fd;">1 share</div>
+                            <div id="calcTargetPriceSubtext" style="font-size: 0.8rem; color: var(--text-muted);">Price: $0.00 / share</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Conversion Result</div>
+                            <div id="calcTargetObtainableDisplay" style="font-size: 1.3rem; font-weight: 700; color: var(--positive-color);">0 shares (0 lots)</div>
+                            <div id="calcTargetCostDisplay" style="font-size: 0.8rem; color: var(--text-muted);">Total cost: $0.00</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;">Cash Surplus / Next Lot</div>
+                            <div id="calcRemainderDisplay" style="font-size: 1.3rem; font-weight: 700; color: #fbbf24;">$0.00 left over</div>
+                            <div id="calcRemainderSubtext" style="font-size: 0.8rem; color: var(--text-muted); display: none;">Equivalent to $0.00</div>
+                            <div id="calcNextLotDisplay" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Need $0.00 for next lot</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Dashboard -->
+        <div class="panel">
+            <div class="chart-section-header">
+                <h2 class="chart-title">Total Return (Reinvested Compounding)</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Timeframe: {% if resolved_start_date %}{{ resolved_start_date }}{% else %}{{ start_date }}{% endif %} to {{ end_date }}</p>
+            </div>
+            <div class="chart-container">
+                {{ div_tr|safe }}
+            </div>
+            
+            <div class="chart-section-header" style="margin-top: 3rem;">
+                <h2 class="chart-title">Price Return (Asset Growth Only)</h2>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0.25rem 0 0 0;">Timeframe: {% if resolved_start_date %}{{ resolved_start_date }}{% else %}{{ start_date }}{% endif %} to {{ end_date }}</p>
+            </div>
+            <div class="chart-container" style="margin-bottom: 0;">
+                {{ div_pr|safe }}
+            </div>
+        </div>
+
+        <footer>
+            Asset Backtester Report &bull; Generated on {{ generation_time }}
+        </footer>
+    </div>
+
+    <script>
+        // Initial resize trigger to render Plotly properly in containers
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 200);
+
+        // Swap calculator script
+        document.addEventListener('DOMContentLoaded', () => {
+            const conversionData = {
+                {% for ticker, data in results.items() %}
+                "{{ ticker }}": {
+                    price: {{ data.last_close_local }},
+                    isCAD: {{ 'false' if (not ticker.endswith('.TO') or '-U' in ticker) else 'true' }},
+                    isTSX: {{ 'true' if ticker.endswith('.TO') else 'false' }}
+                },
+                {% endfor %}
+            };
+            
+            const sourceSelect = document.getElementById('calcSourceTicker');
+            const targetSelect = document.getElementById('calcTargetTicker');
+            const qtyInput = document.getElementById('calcSourceQty');
+            const calcContent = document.getElementById('calculatorContent');
+            const calcHeader = document.getElementById('calculatorToggleHeader');
+            const calcArrow = document.getElementById('calculatorToggleArrow');
+
+            // Set up show/hide collapse functionality
+            calcHeader.addEventListener('click', () => {
+                const isOpen = calcContent.style.display !== 'none';
+                if (isOpen) {
+                    calcContent.style.display = 'none';
+                    calcArrow.style.transform = 'rotate(0deg)';
+                } else {
+                    calcContent.style.display = 'block';
+                    calcArrow.style.transform = 'rotate(180deg)';
+                }
+            });
+
+            // Populate selectors
+            const tickers = Object.keys(conversionData);
+            tickers.forEach(ticker => {
+                const optSrc = document.createElement('option');
+                optSrc.value = ticker;
+                optSrc.textContent = ticker;
+                sourceSelect.appendChild(optSrc);
+
+                const optTgt = document.createElement('option');
+                optTgt.value = ticker;
+                optTgt.textContent = ticker;
+                targetSelect.appendChild(optTgt);
+            });
+
+            // Set initial defaults (Source = Ticker 1, Target = Ticker 2 if available)
+            if (tickers.length > 0) {
+                sourceSelect.value = tickers[0];
+                if (tickers.length > 1) {
+                    targetSelect.value = tickers[1];
+                } else {
+                    targetSelect.value = tickers[0];
+                }
+            }
+
+            const fxRateInput = document.getElementById('calcFxRate');
+            const fxRateContainer = document.getElementById('calcFxRateContainer');
+            const fxRateLabel = document.getElementById('calcFxRateLabel');
+
+            const formatMoney = (val, isCAD) => {
+                const currency = isCAD ? ' CAD' : ' USD';
+                return '$' + val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + currency;
+            };
+
+            const calculateConversion = () => {
+                const srcTicker = sourceSelect.value;
+                const tgtTicker = targetSelect.value;
+                const qty = parseFloat(qtyInput.value) || 0.0;
+
+                if (!srcTicker || !tgtTicker) return;
+
+                const srcData = conversionData[srcTicker];
+                const tgtData = conversionData[tgtTicker];
+
+                // Detect cross-currency swap
+                const srcIsCAD = srcData.isCAD;
+                const tgtIsCAD = tgtData.isCAD;
+                let fxRate = 1.0;
+
+                if (srcIsCAD !== tgtIsCAD) {
+                    fxRateContainer.style.display = 'flex';
+                    if (srcIsCAD && !tgtIsCAD) {
+                        fxRateLabel.textContent = "CAD to USD FX Rate";
+                        if (fxRateInput.dataset.lastMode !== "CAD_USD") {
+                            fxRateInput.value = "{{ cad_to_usd }}";
+                            fxRateInput.dataset.lastMode = "CAD_USD";
+                        }
+                    } else {
+                        fxRateLabel.textContent = "USD to CAD FX Rate";
+                        if (fxRateInput.dataset.lastMode !== "USD_CAD") {
+                            fxRateInput.value = "{{ usd_to_cad }}";
+                            fxRateInput.dataset.lastMode = "USD_CAD";
+                        }
+                    }
+                    fxRate = parseFloat(fxRateInput.value) || 1.0;
+                } else {
+                    fxRateContainer.style.display = 'none';
+                    fxRateInput.dataset.lastMode = "";
+                    fxRateInput.value = "1.0";
+                }
+
+                // 1. Current Holding Value
+                const srcValueLocal = qty * srcData.price;
+                document.getElementById('calcSourceValDisplay').textContent = formatMoney(srcValueLocal, srcIsCAD);
+                document.getElementById('calcSourceSubtext').textContent = `${qty.toLocaleString()} shares @ ${formatMoney(srcData.price, srcIsCAD)}`;
+
+                // 2. Converted value in target currency
+                const srcValueTargetCurrency = srcValueLocal * fxRate;
+                const convertedDisplay = document.getElementById('calcConvertedValDisplay');
+                if (srcIsCAD !== tgtIsCAD) {
+                    convertedDisplay.style.display = 'block';
+                    convertedDisplay.textContent = `Converted: ${formatMoney(srcValueTargetCurrency, tgtIsCAD)}`;
+                } else {
+                    convertedDisplay.style.display = 'none';
+                }
+
+                // 3. Target Minimum Unit (Lot Size)
+                const lotSize = tgtData.isTSX ? 100 : 1;
+                document.getElementById('calcTargetUnitDisplay').textContent = tgtData.isTSX ? "100 shares (1 Lot)" : "1 share (US)";
+                document.getElementById('calcTargetPriceSubtext').textContent = `Price: ${formatMoney(tgtData.price, tgtIsCAD)} / share`;
+
+                // 4. Obtainable Lots & Shares
+                const lotCost = lotSize * tgtData.price;
+                const obtainableLots = Math.floor(srcValueTargetCurrency / lotCost);
+                const obtainableShares = obtainableLots * lotSize;
+                const totalCost = obtainableShares * tgtData.price;
+
+                const lotUnitStr = obtainableLots === 1 ? 'lot' : 'lots';
+                document.getElementById('calcTargetObtainableDisplay').textContent = `${obtainableShares.toLocaleString()} shares (${obtainableLots} ${lotUnitStr})`;
+                document.getElementById('calcTargetCostDisplay').textContent = `Total Cost: ${formatMoney(totalCost, tgtIsCAD)}`;
+
+                // 5. Cash Left Over & Next Lot Cost
+                const remainder = srcValueTargetCurrency - totalCost;
+                const nextLotCost = lotCost - remainder;
+
+                document.getElementById('calcRemainderDisplay').textContent = `${formatMoney(remainder, tgtIsCAD)} remaining`;
+                document.getElementById('calcNextLotDisplay').textContent = `Needs ${formatMoney(nextLotCost, tgtIsCAD)} for next lot`;
+
+                const remainderSubtext = document.getElementById('calcRemainderSubtext');
+                if (srcIsCAD !== tgtIsCAD && fxRate !== 0) {
+                    const remainderSourceCurrency = remainder / fxRate;
+                    remainderSubtext.style.display = 'block';
+                    remainderSubtext.textContent = `Equivalent to ${formatMoney(remainderSourceCurrency, srcIsCAD)}`;
+                } else {
+                    remainderSubtext.style.display = 'none';
+                }
+            };
+
+            // Recalculate on input change
+            sourceSelect.addEventListener('change', calculateConversion);
+            targetSelect.addEventListener('change', calculateConversion);
+            qtyInput.addEventListener('input', calculateConversion);
+            fxRateInput.addEventListener('input', calculateConversion);
+
+            // Run initial calculation
+            calculateConversion();
+        });
+    </script>
+</body>
+</html>

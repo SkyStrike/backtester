@@ -1,0 +1,16 @@
+services:
+  backtester:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: backtest-visualizer
+    ports:
+      - "5000:5000"
+    environment:
+      - BASE_PATH=${BASE_PATH:-}
+    volumes:
+      # Persist market data database on the host
+      - ./data:/app/data
+      # Mount config folder so you can add/edit JSON configurations on the host dynamically
+      - ./config:/app/config
+    restart: unless-stopped
