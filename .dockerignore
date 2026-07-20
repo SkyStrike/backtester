@@ -1,0 +1,42 @@
+# Python cache & compiles
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local database files
+*.db
+*.sqlite
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files / Secrets
+.env
+
+# IDE / OS junk
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project Docs, Metadata, & Repository Dirs
+.git/
+.github/
+.agents/
+README.md
+LICENSE
+prompt.md
+docs/
+
+# Temporary directories
+tasks/
+tmp/
+data/
+
+# Docker configurations (not needed inside container)
+Dockerfile
+docker-compose.yml
+.dockerignore
