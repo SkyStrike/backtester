@@ -242,8 +242,8 @@
 
         .quick-date-btn {
             flex: 1;
-            padding: 0.35rem 0.5rem;
-            font-size: 0.75rem;
+            padding: 0.35rem 0.25rem;
+            font-size: 0.72rem;
             background: rgba(59, 130, 246, 0.1);
             border: 1px solid rgba(59, 130, 246, 0.2);
             color: #60a5fa;
@@ -251,6 +251,8 @@
             cursor: pointer;
             transition: all 0.2s ease;
             font-family: inherit;
+            white-space: nowrap;
+            text-align: center;
         }
 
         .quick-date-btn:hover {
@@ -515,6 +517,7 @@
                         <label for="startDate">Start Date</label>
                         <input type="text" id="startDate" name="startDate" class="input-control" placeholder="yyyy-mm-dd" required>
                         <div class="quick-dates" style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                            <button type="button" class="quick-date-btn" data-type="ytd">YTD</button>
                             <button type="button" class="quick-date-btn" data-years="1">1 Year</button>
                             <button type="button" class="quick-date-btn" data-years="2">2 Years</button>
                             <button type="button" class="quick-date-btn" data-years="5">5 Years</button>
@@ -706,19 +709,28 @@
         // Event listener for quick-date buttons
         document.querySelectorAll('.quick-date-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                const years = parseInt(btn.getAttribute('data-years'), 10);
                 const endDateVal = endDateInput.value;
                 if (!endDateVal) return;
                 
-                const date = new Date(endDateVal);
-                if (isNaN(date.getTime())) return;
-                
-                date.setFullYear(date.getFullYear() - years);
-                
-                const yyyy = date.getFullYear();
-                const mm = String(date.getMonth() + 1).padStart(2, '0');
-                const dd = String(date.getDate()).padStart(2, '0');
-                const newStart = `${yyyy}-${mm}-${dd}`;
+                let newStart = "";
+                const dataType = btn.getAttribute('data-type');
+                if (dataType === 'ytd') {
+                    const endParts = endDateVal.split('-');
+                    const yyyy = endParts[0];
+                    newStart = `${yyyy}-01-01`;
+                } else {
+                    const years = parseInt(btn.getAttribute('data-years'), 10);
+                    const [y, m, d] = endDateVal.split('-').map(Number);
+                    const date = new Date(y, m - 1, d);
+                    if (isNaN(date.getTime())) return;
+                    
+                    date.setFullYear(date.getFullYear() - years);
+                    
+                    const yyyy = date.getFullYear();
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    newStart = `${yyyy}-${mm}-${dd}`;
+                }
                 
                 startDateInput.value = newStart;
                 if (startDatePicker) {
