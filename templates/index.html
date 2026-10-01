@@ -517,6 +517,7 @@
                         <label for="startDate">Start Date</label>
                         <input type="text" id="startDate" name="startDate" class="input-control" placeholder="yyyy-mm-dd" required>
                         <div class="quick-dates" style="display: flex; gap: 0.5rem; margin-top: 0.35rem;">
+                            <button type="button" class="quick-date-btn" data-months="6">6 Months</button>
                             <button type="button" class="quick-date-btn" data-type="ytd">YTD</button>
                             <button type="button" class="quick-date-btn" data-years="1">1 Year</button>
                             <button type="button" class="quick-date-btn" data-years="2">2 Years</button>
@@ -714,12 +715,27 @@
                 
                 let newStart = "";
                 const dataType = btn.getAttribute('data-type');
+                const monthsAttr = btn.getAttribute('data-months');
+                const yearsAttr = btn.getAttribute('data-years');
+                
                 if (dataType === 'ytd') {
                     const endParts = endDateVal.split('-');
                     const yyyy = endParts[0];
                     newStart = `${yyyy}-01-01`;
-                } else {
-                    const years = parseInt(btn.getAttribute('data-years'), 10);
+                } else if (monthsAttr) {
+                    const months = parseInt(monthsAttr, 10);
+                    const [y, m, d] = endDateVal.split('-').map(Number);
+                    const date = new Date(y, m - 1 - months, d);
+                    if (isNaN(date.getTime())) return;
+                    if (date.getDate() !== d) {
+                        date.setDate(0);
+                    }
+                    const yyyy = date.getFullYear();
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    newStart = `${yyyy}-${mm}-${dd}`;
+                } else if (yearsAttr) {
+                    const years = parseInt(yearsAttr, 10);
                     const [y, m, d] = endDateVal.split('-').map(Number);
                     const date = new Date(y, m - 1, d);
                     if (isNaN(date.getTime())) return;
