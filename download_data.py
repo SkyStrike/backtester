@@ -3,7 +3,9 @@ import os
 import json
 import sqlite3
 import argparse
+import math
 from datetime import datetime, timedelta
+import pandas as pd
 import yfinance as yf
 
 def parse_args():
@@ -182,32 +184,49 @@ def download_ticker_data(conn, ticker, start_date, end_date):
     for timestamp, row in df.iterrows():
         # Format the datetime index to YYYY-MM-DD
         date_str = timestamp.strftime("%Y-%m-%d")
-        close_price = float(row["Close"])
-        dividend_amt = float(row["Dividends"])
         
-        # Save close price
-        cursor.execute(
-            """
-            INSERT OR REPLACE INTO prices (ticker, date, close)
-            VALUES (?, ?, ?)
-            """,
-            (ticker, date_str, close_price)
-        )
-        price_count += 1
+        # Save close price if available and valid
+        close_val = row.get("Close")
+        if pd.notna(close_val):
+            try:
+                close_price = float(close_val)
+                if not math.isnan(close_price) and not math.isinf(close_price):
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO prices (ticker, date, close)
+                        VALUES (?, ?, ?)
+                        """,
+                        (ticker, date_str, close_price)
+                    )
+                    price_count += 1
+            except (ValueError, TypeError):
+                pass
         
         # Save dividend if greater than zero
-        if dividend_amt > 0.0:
-            cursor.execute(
-                """
-                INSERT OR REPLACE INTO dividends (ticker, date, amount)
-                VALUES (?, ?, ?)
-                """,
-                (ticker, date_str, dividend_amt)
-            )
-            div_count += 1
+        div_val = row.get("Dividends")
+        if pd.notna(div_val):
+            try:
+                dividend_amt = float(div_val)
+                if not math.isnan(dividend_amt) and not math.isinf(dividend_amt) and dividend_amt > 0.0:
+                    cursor.execute(
+                        """
+                        INSERT OR REPLACE INTO dividends (ticker, date, amount)
+                        VALUES (?, ?, ?)
+                        """,
+                        (ticker, date_str, dividend_amt)
+                    )
+                    div_count += 1
+            except (ValueError, TypeError):
+                pass
             
     # Record inception date and currency in metadata
-    first_available_date = df.index[0].strftime("%Y-%m-%d")
+    valid_prices = df[df["Close"].notna()] if "Close" in df.columns else df
+    if not valid_prices.empty:
+        first_available_date = valid_prices.index[0].strftime("%Y-%m-%d")
+    elif not df.empty:
+        first_available_date = df.index[0].strftime("%Y-%m-%d")
+    else:
+        first_available_date = start_date
     
     # Calculate if the difference is substantial (greater than 7 days)
     try:
@@ -266,8 +285,17 @@ def download_exchange_rates(conn, currency, start_date, end_date):
     cursor = conn.cursor()
     rate_count = 0
     for timestamp, row in df.iterrows():
+        close_val = row.get("Close")
+        if pd.isna(close_val):
+            continue
+        try:
+            rate = float(close_val)
+        except (ValueError, TypeError):
+            continue
+        if math.isnan(rate) or math.isinf(rate) or rate <= 0:
+            continue
+            
         date_str = timestamp.strftime("%Y-%m-%d")
-        rate = float(row["Close"])
         
         # Save exchange rate
         cursor.execute(
